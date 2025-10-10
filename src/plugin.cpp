@@ -39,7 +39,7 @@ BOOL __stdcall CEPlugin_InitializePlugin(const PExportedFunctions ef , int plugi
     *static_cast<uintptr_t *>(process32_next) = reinterpret_cast<uintptr_t>(&hooks::hk_Process32Next);
     *static_cast<uintptr_t *>(open_process) = reinterpret_cast<uintptr_t>(&hooks::hk_OpenProcess);
 
-    // *static_cast<CEP_READPROCESSMEMORY>(read_process_memory) = reinterpret_cast<CEP_READPROCESSMEMORY>(&hooks::hk_ReadProcessMemory);
+    *reinterpret_cast<CEP_READPROCESSMEMORY>(read_process_memory) = &hooks::hk_ReadProcessMemory;
     *static_cast<uintptr_t *>(write_process_memory) = reinterpret_cast<uintptr_t>(&hooks::hk_WriteProcessMemory);
 
 

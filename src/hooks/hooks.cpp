@@ -33,7 +33,7 @@ namespace hooks {
 
     HANDLE WINAPI hk_CreateToolhelp32Snapshot(DWORD dwFlags, DWORD th32ProcessID) {
         cpr::Response r = cpr::Get(
-            cpr::Url{"http://192.168.8.15:5000/processes"},
+            cpr::Url{"http://192.168.8.168:5000/processes"},
             cpr::Timeout{2000}
         );
         json j = json::parse(r.text);
@@ -66,25 +66,42 @@ namespace hooks {
     }
 
 
-    DWORD WINAPI hk_OpenProcess(const DWORD pid) {
+    DWORD WINAPI hk_OpenProcess(
+        DWORD dwDesiredAccess,
+        BOOL bInheritHandle,
+        DWORD dwProcessId
+    ) {
         cpr::Response r = cpr::Post(
-            cpr::Url{"http://192.168.8.15:5000/open-process"},
-            cpr::Payload{{"pid", std::to_string(pid)}},
+            cpr::Url{"http://192.168.8.168:5000/open-process"},
+            cpr::Payload{{"pid", std::to_string(dwProcessId)}},
             cpr::Timeout{2000}
         );
 
         json j = json::parse(r.text);
+        printf("Original PID: %lu\n", dwProcessId);
 
-        printf(r.text.c_str());
-        return j.get<>();
+        const auto handle_pid = std::stoul(j["pid"].get<std::string>());
+        return handle_pid;
     }
 
-    BOOL WINAPI hk_ReadProcessMemory(DWORD hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead) {
+    BOOL WINAPI hk_ReadProcessMemory(
+        HANDLE hProcess,
+        LPCVOID lpBaseAddress,
+        LPVOID lpBuffer,
+        SIZE_T nSize,
+        SIZE_T* lpNumberOfBytesRead
+    ) {
         printf("ReadProcessMemory called\n");
         return TRUE;
     }
 
-    BOOL WINAPI hk_WriteProcessMemory(DWORD hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten) {
+    BOOL WINAPI hk_WriteProcessMemory(
+        HANDLE hProcess,
+        LPVOID lpBaseAddress,
+        LPCVOID lpBuffer,
+        SIZE_T nSize,
+        SIZE_T* lpNumberOfBytesWritten
+    ) {
         printf("WriteProcessMemory called\n");
         return TRUE;
     }
