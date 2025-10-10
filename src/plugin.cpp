@@ -11,7 +11,6 @@ extern "C" {
 FILE* stream;
 void SetupConsole() {
     AllocConsole();
-    freopen("CONOUT$", "w", stdout);
     freopen_s(&stream, "CONOUT$", "w", stdout);
 }
 

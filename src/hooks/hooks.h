@@ -11,7 +11,7 @@ namespace hooks {
     BOOL WINAPI hk_ReadProcessMemory(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead);
     BOOL WINAPI hk_WriteProcessMemory(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten);
 
-    DWORD WINAPI hk_OpenProcess(
+    HANDLE WINAPI hk_OpenProcess(
         DWORD dwDesiredAccess,
         BOOL bInheritHandle,
         DWORD dwProcessId

@@ -66,22 +66,12 @@ namespace hooks {
     }
 
 
-    DWORD WINAPI hk_OpenProcess(
+    HANDLE WINAPI hk_OpenProcess(
         DWORD dwDesiredAccess,
         BOOL bInheritHandle,
         DWORD dwProcessId
     ) {
-        cpr::Response r = cpr::Post(
-            cpr::Url{"http://192.168.8.168:5000/open-process"},
-            cpr::Payload{{"pid", std::to_string(dwProcessId)}},
-            cpr::Timeout{2000}
-        );
-
-        json j = json::parse(r.text);
-        printf("Original PID: %lu\n", dwProcessId);
-
-        const auto handle_pid = std::stoul(j["pid"].get<std::string>());
-        return handle_pid;
+        return ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcessId); // todo: use fake handle
     }
 
     BOOL WINAPI hk_ReadProcessMemory(
