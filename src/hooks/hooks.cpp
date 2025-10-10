@@ -32,7 +32,10 @@ static size_t g_index = 0;
 namespace hooks {
 
     HANDLE WINAPI hk_CreateToolhelp32Snapshot(DWORD dwFlags, DWORD th32ProcessID) {
-        cpr::Response r = cpr::Get(cpr::Url{"http://192.168.8.15:5000/processes"}, cpr::Timeout{2000});
+        cpr::Response r = cpr::Get(
+            cpr::Url{"http://192.168.8.15:5000/processes"},
+            cpr::Timeout{2000}
+        );
         json j = json::parse(r.text);
 
         g_processes.clear();
@@ -59,6 +62,30 @@ namespace hooks {
 
         ++g_index;
         g_processes[g_index].toProcessEntry(lppe);
+        return TRUE;
+    }
+
+
+    DWORD WINAPI hk_OpenProcess(const DWORD pid) {
+        cpr::Response r = cpr::Post(
+            cpr::Url{"http://192.168.8.15:5000/open-process"},
+            cpr::Payload{{"pid", std::to_string(pid)}},
+            cpr::Timeout{2000}
+        );
+
+        json j = json::parse(r.text);
+
+        printf(r.text.c_str());
+        return j.get<>();
+    }
+
+    BOOL WINAPI hk_ReadProcessMemory(DWORD hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead) {
+        printf("ReadProcessMemory called\n");
+        return TRUE;
+    }
+
+    BOOL WINAPI hk_WriteProcessMemory(DWORD hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten) {
+        printf("WriteProcessMemory called\n");
         return TRUE;
     }
 
