@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <cstdio>
+#include <iostream>
 #include <cpr/cpr.h>
 
 #include "hooks/hooks.h"
@@ -8,10 +9,15 @@ extern "C" {
     #include "cepluginsdk.h"
 }
 
-FILE* stream;
 void SetupConsole() {
     AllocConsole();
-    freopen_s(&stream, "CONOUT$", "w", stdout);
+    FILE* fp;
+    freopen_s(&fp, "CONOUT$", "w", stdout);
+    freopen_s(&fp, "CONOUT$", "w", stderr);
+    freopen_s(&fp, "CONIN$", "r", stdin);
+    std::ios::sync_with_stdio(true);
+
+    SetConsoleTitleA("Dma Plugin Console");
 }
 
 BOOL __stdcall CEPlugin_GetVersion(const PPluginVersion pv, int sizeofpluginversion) {
@@ -25,6 +31,10 @@ BOOL __stdcall CEPlugin_InitializePlugin(const PExportedFunctions ef , int plugi
     if (!ef) return FALSE;
 
     SetupConsole();
+
+    printf("[*] Enter server IP with port: \n");
+    std::cin >> hooks::serverIp;;
+    printf("[*] Server IP: %s\n", hooks::serverIp.c_str());
 
     const auto create_tool_help32 = ef->CreateToolhelp32Snapshot;
     const auto process32_first = ef->Process32First;

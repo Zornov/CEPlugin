@@ -3,13 +3,15 @@
 #include <cpr/cpr.h>
 #include <json.hpp>
 
+#include "base64.hpp"
+
 using json = nlohmann::json;
 
 struct ProcessData {
-    unsigned long pid;
+    unsigned long pid{};
     std::string name;
 
-    void fromJson(const nlohmann::json& j) {
+    void fromJson(const json& j) {
         pid = std::stoul(j["pid"].get<std::string>());
         name = j["exe"].get<std::string>();
     }
@@ -26,63 +28,70 @@ struct ProcessData {
     }
 };
 
-static std::vector<ProcessData> g_processes;
-static size_t g_index = 0;
+std::vector<ProcessData> g_processes_read;
+std::mutex g_mutex;
+size_t g_index = 0;
 
 namespace hooks {
-
-    HANDLE WINAPI hk_CreateToolhelp32Snapshot(DWORD dwFlags, DWORD th32ProcessID) {
-        cpr::Response r = cpr::Get(
-            cpr::Url{"http://192.168.8.168:5000/processes"},
+    HANDLE WINAPI hk_CreateToolhelp32Snapshot(DWORD, DWORD) {
+        auto async_response = cpr::GetAsync(
+            cpr::Url{"http://" + serverIp + "/processes"},
             cpr::Timeout{2000}
         );
-        json j = json::parse(r.text);
 
-        g_processes.clear();
-        for (const auto& item : j) {
-            ProcessData p;
-            p.fromJson(item);
-            g_processes.push_back(p);
+        try {
+            cpr::Response r = async_response.get();
+            json j = json::parse(r.text);
+
+            std::vector<ProcessData> tmp;
+            for (auto& item : j) {
+                ProcessData p;
+                p.fromJson(item);
+                tmp.push_back(p);
+            }
+
+            std::lock_guard lock(g_mutex);
+            std::swap(g_processes_read, tmp);
+            g_index = 0;
+        } catch (const std::exception& e) {
+            printf("[!] Error fetching processes: %s\n", e.what());
         }
 
-        g_index = 0;
         return reinterpret_cast<HANDLE>(0x66);
     }
 
-    BOOL WINAPI hk_Process32First(HANDLE hSnapshot, LPPROCESSENTRY32 lppe) {
-        if (g_processes.empty()) return FALSE;
+    BOOL WINAPI hk_Process32First(HANDLE, LPPROCESSENTRY32 lppe) {
+        std::lock_guard lock(g_mutex);
+        if (g_processes_read.empty()) return FALSE;
 
         g_index = 0;
-        g_processes[g_index].toProcessEntry(lppe);
+        g_processes_read[g_index].toProcessEntry(lppe);
         return TRUE;
     }
 
-    BOOL WINAPI hk_Process32Next(HANDLE hSnapshot, LPPROCESSENTRY32 lppe) {
-        if (g_index + 1 >= g_processes.size()) return FALSE;
+    BOOL WINAPI hk_Process32Next(HANDLE, LPPROCESSENTRY32 lppe) {
+        std::lock_guard lock(g_mutex);
+        if (g_index + 1 >= g_processes_read.size()) return FALSE;
 
         ++g_index;
-        g_processes[g_index].toProcessEntry(lppe);
+        g_processes_read[g_index].toProcessEntry(lppe);
         return TRUE;
     }
 
-
-    HANDLE WINAPI hk_OpenProcess(
-        DWORD dwDesiredAccess,
-        BOOL bInheritHandle,
-        DWORD dwProcessId
-    ) {
-        return ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcessId); // todo: use fake handle
+    HANDLE WINAPI hk_OpenProcess(DWORD ,BOOL, DWORD) {
+        return reinterpret_cast<HANDLE>(0x69);
     }
 
     BOOL WINAPI hk_ReadProcessMemory(
-        HANDLE hProcess,
-        LPCVOID lpBaseAddress,
-        LPVOID lpBuffer,
-        SIZE_T nSize,
+        const HANDLE hProcess,
+        const LPCVOID lpBaseAddress,
+        const LPVOID lpBuffer,
+        const SIZE_T nSize,
         SIZE_T* lpNumberOfBytesRead
     ) {
-        printf("ReadProcessMemory called\n");
-        return TRUE;
+        printf("ReadProcessMemory called: hProcess=%p, lpBaseAddress=%p, lpBuffer=%p, nSize=%llu\n",
+               hProcess, lpBaseAddress, lpBuffer, nSize);
+        return ReadProcessMemory(hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesRead);
     }
 
     BOOL WINAPI hk_WriteProcessMemory(
@@ -92,8 +101,6 @@ namespace hooks {
         SIZE_T nSize,
         SIZE_T* lpNumberOfBytesWritten
     ) {
-        printf("WriteProcessMemory called\n");
-        return TRUE;
+        return WriteProcessMemory(hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesWritten);
     }
-
 }

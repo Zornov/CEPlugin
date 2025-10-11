@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 include_directories("ext/CheatEngine")
 include_directories("ext/json")
+include_directories("ext/base64")
 
 find_package(cpr CONFIG REQUIRED)
 
