@@ -8,6 +8,7 @@ include_directories("ext/json")
 include_directories("ext/base64")
 
 find_package(cpr CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(LUA_LIB "${CMAKE_SOURCE_DIR}/ext/CheatEngine/lib/lua53-64.lib")
@@ -34,4 +35,5 @@ target_link_libraries(CEPlugin
         PRIVATE
         ${LUA_LIB}
         cpr::cpr
+        fmt::fmt
 )

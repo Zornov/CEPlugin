@@ -1,7 +1,9 @@
 #include "hooks.h"
-
 #include <cpr/cpr.h>
 #include <json.hpp>
+#include <mutex>
+#include <vector>
+#include <string>
 
 using json = nlohmann::json;
 

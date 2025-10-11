@@ -22,7 +22,7 @@ void SetupConsole() {
 }
 
 template<typename HookT>
-uintptr_t hook(void* field_ptr, HookT hook, const char* name = nullptr) noexcept {
+uintptr_t set_hook(void* field_ptr, HookT hook, const char* name = nullptr) noexcept {
     if (!field_ptr) {
         if (name) std::cerr << "[!] hook: field_ptr == nullptr for " << name << '\n';
         return 0;
@@ -50,7 +50,7 @@ BOOL __stdcall CEPlugin_GetVersion(const PPluginVersion pv, int) {
     return TRUE;
 }
 
-BOOL __stdcall CEPlugin_InitializePlugin(const PExportedFunctions ef, int pluginid) {
+BOOL __stdcall CEPlugin_InitializePlugin(const PExportedFunctions ef, int) {
     if (!ef) return FALSE;
 
     SetupConsole();
@@ -59,13 +59,13 @@ BOOL __stdcall CEPlugin_InitializePlugin(const PExportedFunctions ef, int plugin
     std::getline(std::cin, hooks::serverIp);
     std::cout << "[*] Server IP: " << hooks::serverIp << "\n";
 
-    hook(ef->CreateToolhelp32Snapshot, &hooks::hk_CreateToolhelp32Snapshot, "CreateToolhelp32Snapshot");
-    hook(ef->Process32First, &hooks::hk_Process32First, "Process32First");
-    hook(ef->Process32Next, &hooks::hk_Process32Next, "Process32Next");
-    hook(ef->OpenProcess, &hooks::hk_OpenProcess, "OpenProcess");
+    set_hook(ef->CreateToolhelp32Snapshot, &hooks::hk_CreateToolhelp32Snapshot, "CreateToolhelp32Snapshot");
+    set_hook(ef->Process32First, &hooks::hk_Process32First, "Process32First");
+    set_hook(ef->Process32Next, &hooks::hk_Process32Next, "Process32Next");
+    set_hook(ef->OpenProcess, &hooks::hk_OpenProcess, "OpenProcess");
 
-    hook(ef->ReadProcessMemory, &hooks::hk_ReadProcessMemory, "ReadProcessMemory");
-    hook(ef->WriteProcessMemory, &hooks::hk_WriteProcessMemory, "WriteProcessMemory");
+    set_hook(ef->ReadProcessMemory, &hooks::hk_ReadProcessMemory, "ReadProcessMemory");
+    set_hook(ef->WriteProcessMemory, &hooks::hk_WriteProcessMemory, "WriteProcessMemory");
 
     return TRUE;
 }
@@ -74,6 +74,6 @@ BOOL __stdcall CEPlugin_DisablePlugin() {
     return TRUE;
 }
 
-BOOL APIENTRY DllMain(HMODULE /*hModule*/, DWORD /*ul_reason_for_call*/, LPVOID /*lpReserved*/) {
+BOOL APIENTRY DllMain(HMODULE, DWORD, LPVOID) {
     return TRUE;
 }

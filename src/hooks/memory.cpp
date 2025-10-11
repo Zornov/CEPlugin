@@ -2,12 +2,10 @@
 
 #include <cpr/cpr.h>
 #include <json.hpp>
-#include <cstdio>
-#include <cstring>
+#include <base64.hpp>
+#include <fmt/core.h>
 #include <string>
-#include <vector>
-#include <sstream>
-#include <iomanip>
+#include <iostream>
 
 using json = nlohmann::json;
 
@@ -30,15 +28,50 @@ namespace hooks {
     BOOL WINAPI hk_ReadProcessMemory(
         HANDLE,
         const LPCVOID lpBaseAddress,
-        const LPVOID lpBuffer,
-        const SIZE_T nSize,
+        LPVOID lpBuffer,
+        SIZE_T nSize,
         SIZE_T* lpNumberOfBytesRead
     ) {
-        printf("[*] ReadProcessMemory called: lpBaseAddress=%p, lpBuffer=%p, nSize=%llu\n",
-               lpBaseAddress, lpBuffer, static_cast<unsigned long long>(nSize));
-        return FALSE;
-    }
+        try {
+            auto addr = reinterpret_cast<uint64_t>(lpBaseAddress);
 
+            printf("[*] Reading memory at address: 0x%llX, size: %llu bytes\n", addr, nSize);
+
+            const json payload = {
+                {"address", addr},
+                {"size", nSize}
+            };
+
+            auto response = cpr::Post(
+                cpr::Url{"http://" + serverIp + "/read-memory"},
+                cpr::Body{payload.dump()},
+                cpr::Header{{"Content-Type", "application/json"}},
+                cpr::Timeout{3000}
+            );
+
+            if (response.status_code != 200) {
+                printf("[!] Failed to read memory: HTTP %d\n", response.status_code);
+                return FALSE;
+            }
+
+            auto j = json::parse(response.text);
+            const auto hexData = j["data"].get<std::string>();
+
+            for (size_t i = 0; i < nSize && i*2 + 1 < hexData.size(); ++i) {
+                std::string byteStr = hexData.substr(i*2, 2);
+                static_cast<unsigned char*>(lpBuffer)[i] = static_cast<unsigned char>(std::stoul(byteStr, nullptr, 16));
+            }
+
+            if (lpNumberOfBytesRead)
+                *lpNumberOfBytesRead = nSize;
+
+            return TRUE;
+
+        } catch (const std::exception& e) {
+            printf("[!] Exception in hk_ReadProcessMemory: %s\n", e.what());
+            return FALSE;
+        }
+    }
 
     BOOL WINAPI hk_WriteProcessMemory(
         HANDLE hProcess,
