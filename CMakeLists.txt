@@ -17,7 +17,8 @@ endif()
 
 add_library(CEPlugin SHARED
         src/plugin.cpp
-        src/hooks/hooks.cpp
+        src/hooks/process.cpp
+        src/hooks/memory.cpp
 )
 
 target_compile_definitions(CEPlugin PRIVATE

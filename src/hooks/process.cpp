@@ -3,8 +3,6 @@
 #include <cpr/cpr.h>
 #include <json.hpp>
 
-#include "base64.hpp"
-
 using json = nlohmann::json;
 
 struct ProcessData {
@@ -41,6 +39,9 @@ namespace hooks {
 
         try {
             cpr::Response r = async_response.get();
+            if (r.text.empty()) {
+                return INVALID_HANDLE_VALUE;
+            }
             json j = json::parse(r.text);
 
             std::vector<ProcessData> tmp;
@@ -54,7 +55,7 @@ namespace hooks {
             std::swap(g_processes_read, tmp);
             g_index = 0;
         } catch (const std::exception& e) {
-            printf("[!] Error fetching processes: %s\n", e.what());
+            printf("[!] Error fetching processes: %s", e.what());
         }
 
         return reinterpret_cast<HANDLE>(0x66);
@@ -76,31 +77,5 @@ namespace hooks {
         ++g_index;
         g_processes_read[g_index].toProcessEntry(lppe);
         return TRUE;
-    }
-
-    HANDLE WINAPI hk_OpenProcess(DWORD ,BOOL, DWORD) {
-        return reinterpret_cast<HANDLE>(0x69);
-    }
-
-    BOOL WINAPI hk_ReadProcessMemory(
-        const HANDLE hProcess,
-        const LPCVOID lpBaseAddress,
-        const LPVOID lpBuffer,
-        const SIZE_T nSize,
-        SIZE_T* lpNumberOfBytesRead
-    ) {
-        printf("ReadProcessMemory called: hProcess=%p, lpBaseAddress=%p, lpBuffer=%p, nSize=%llu\n",
-               hProcess, lpBaseAddress, lpBuffer, nSize);
-        return ReadProcessMemory(hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesRead);
-    }
-
-    BOOL WINAPI hk_WriteProcessMemory(
-        HANDLE hProcess,
-        LPVOID lpBaseAddress,
-        LPCVOID lpBuffer,
-        SIZE_T nSize,
-        SIZE_T* lpNumberOfBytesWritten
-    ) {
-        return WriteProcessMemory(hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesWritten);
     }
 }

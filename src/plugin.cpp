@@ -1,7 +1,7 @@
 #include <windows.h>
 #include <cstdio>
 #include <iostream>
-#include <cpr/cpr.h>
+#include <string>
 
 #include "hooks/hooks.h"
 
@@ -11,46 +11,61 @@ extern "C" {
 
 void SetupConsole() {
     AllocConsole();
-    FILE* fp;
+    FILE* fp = nullptr;
     freopen_s(&fp, "CONOUT$", "w", stdout);
     freopen_s(&fp, "CONOUT$", "w", stderr);
-    freopen_s(&fp, "CONIN$", "r", stdin);
+    freopen_s(&fp, "CONIN$",  "r", stdin);
     std::ios::sync_with_stdio(true);
 
     SetConsoleTitleA("Dma Plugin Console");
+    std::cout << "[*] Console initialized.\n";
 }
 
-BOOL __stdcall CEPlugin_GetVersion(const PPluginVersion pv, int sizeofpluginversion) {
+template<typename HookT>
+uintptr_t hook(void* field_ptr, HookT hook, const char* name = nullptr) noexcept {
+    if (!field_ptr) {
+        if (name) std::cerr << "[!] hook: field_ptr == nullptr for " << name << '\n';
+        return 0;
+    }
+
+    const auto target = static_cast<uintptr_t*>(field_ptr);
+    const uintptr_t old = *target;
+
+    *target = reinterpret_cast<uintptr_t>(hook);
+
+    if (name) {
+        std::cout << "[*] Hooked " << name
+                  << " (old: 0x" << std::hex << old
+                  << " new: 0x" << reinterpret_cast<uintptr_t>(hook) << std::dec << ")\n";
+    }
+
+    return old;
+}
+
+
+BOOL __stdcall CEPlugin_GetVersion(const PPluginVersion pv, int) {
     if (!pv) return FALSE;
     pv->version = CESDK_VERSION;
-    pv->pluginname = "ZZS_Minimal";
+    pv->pluginname = "DMA Plugin";
     return TRUE;
 }
 
-BOOL __stdcall CEPlugin_InitializePlugin(const PExportedFunctions ef , int pluginid) {
+BOOL __stdcall CEPlugin_InitializePlugin(const PExportedFunctions ef, int pluginid) {
     if (!ef) return FALSE;
 
     SetupConsole();
 
-    printf("[*] Enter server IP with port: \n");
-    std::cin >> hooks::serverIp;;
-    printf("[*] Server IP: %s\n", hooks::serverIp.c_str());
+    std::cout << "[*] Enter server IP with port: ";
+    std::getline(std::cin, hooks::serverIp);
+    std::cout << "[*] Server IP: " << hooks::serverIp << "\n";
 
-    const auto create_tool_help32 = ef->CreateToolhelp32Snapshot;
-    const auto process32_first = ef->Process32First;
-    const auto process32_next = ef->Process32Next;
-    const auto open_process = ef->OpenProcess;
-    const auto read_process_memory = ef->ReadProcessMemory;
-    const auto write_process_memory = ef->WriteProcessMemory;
+    hook(ef->CreateToolhelp32Snapshot, &hooks::hk_CreateToolhelp32Snapshot, "CreateToolhelp32Snapshot");
+    hook(ef->Process32First, &hooks::hk_Process32First, "Process32First");
+    hook(ef->Process32Next, &hooks::hk_Process32Next, "Process32Next");
+    hook(ef->OpenProcess, &hooks::hk_OpenProcess, "OpenProcess");
 
-    *static_cast<uintptr_t *>(create_tool_help32) = reinterpret_cast<uintptr_t>(&hooks::hk_CreateToolhelp32Snapshot);
-    *static_cast<uintptr_t *>(process32_first) = reinterpret_cast<uintptr_t>(&hooks::hk_Process32First);
-    *static_cast<uintptr_t *>(process32_next) = reinterpret_cast<uintptr_t>(&hooks::hk_Process32Next);
-    *static_cast<uintptr_t *>(open_process) = reinterpret_cast<uintptr_t>(&hooks::hk_OpenProcess);
-
-    *reinterpret_cast<CEP_READPROCESSMEMORY>(read_process_memory) = &hooks::hk_ReadProcessMemory;
-    *static_cast<uintptr_t *>(write_process_memory) = reinterpret_cast<uintptr_t>(&hooks::hk_WriteProcessMemory);
-
+    hook(ef->ReadProcessMemory, &hooks::hk_ReadProcessMemory, "ReadProcessMemory");
+    hook(ef->WriteProcessMemory, &hooks::hk_WriteProcessMemory, "WriteProcessMemory");
 
     return TRUE;
 }
@@ -59,6 +74,6 @@ BOOL __stdcall CEPlugin_DisablePlugin() {
     return TRUE;
 }
 
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
+BOOL APIENTRY DllMain(HMODULE /*hModule*/, DWORD /*ul_reason_for_call*/, LPVOID /*lpReserved*/) {
     return TRUE;
 }
