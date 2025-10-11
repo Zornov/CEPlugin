@@ -5,8 +5,10 @@ set(CMAKE_CXX_STANDARD 17)
 
 include_directories("ext/CheatEngine")
 include_directories("ext/json")
+include_directories("ext/base64")
 
 find_package(cpr CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(LUA_LIB "${CMAKE_SOURCE_DIR}/ext/CheatEngine/lib/lua53-64.lib")
@@ -16,7 +18,8 @@ endif()
 
 add_library(CEPlugin SHARED
         src/plugin.cpp
-        src/hooks/hooks.cpp
+        src/hooks/process.cpp
+        src/hooks/memory.cpp
 )
 
 target_compile_definitions(CEPlugin PRIVATE
@@ -32,4 +35,5 @@ target_link_libraries(CEPlugin
         PRIVATE
         ${LUA_LIB}
         cpr::cpr
+        fmt::fmt
 )
