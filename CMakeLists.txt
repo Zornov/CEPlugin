@@ -7,7 +7,6 @@ include_directories("ext/CheatEngine")
 include_directories("ext/json")
 
 find_package(cpr CONFIG REQUIRED)
-find_package(fmt CONFIG REQUIRED)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(LUA_LIB "${CMAKE_SOURCE_DIR}/ext/CheatEngine/lib/lua53-64.lib")
