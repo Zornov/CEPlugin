@@ -2,10 +2,7 @@
 
 #include <cpr/cpr.h>
 #include <json.hpp>
-#include <base64.hpp>
-#include <fmt/core.h>
 #include <string>
-#include <iostream>
 
 using json = nlohmann::json;
 
@@ -74,12 +71,54 @@ namespace hooks {
     }
 
     BOOL WINAPI hk_WriteProcessMemory(
-        HANDLE hProcess,
+        HANDLE,
         LPVOID lpBaseAddress,
         LPCVOID lpBuffer,
-        SIZE_T nSize,
+        const SIZE_T nSize,
         SIZE_T* lpNumberOfBytesWritten
     ) {
-        return WriteProcessMemory(hProcess, lpBaseAddress, lpBuffer, nSize, lpNumberOfBytesWritten);
+        try {
+            const auto addr = reinterpret_cast<uint64_t>(lpBaseAddress);
+            const auto* bytes = static_cast<const unsigned char*>(lpBuffer);
+
+            std::string hexData;
+            hexData.reserve(nSize * 2);
+            static auto hex = "0123456789ABCDEF";
+            for (size_t i = 0; i < nSize; ++i) {
+                hexData.push_back(hex[(bytes[i] >> 4) & 0xF]);
+                hexData.push_back(hex[bytes[i] & 0xF]);
+            }
+
+            const json payload = {
+                {"address", addr},
+                {"data", hexData}
+            };
+
+            auto response = cpr::Post(
+                cpr::Url{"http://" + serverIp + "/write-memory"},
+                cpr::Body{payload.dump()},
+                cpr::Header{{"Content-Type", "application/json"}},
+                cpr::Timeout{3000}
+            );
+
+            if (response.status_code != 200) {
+                printf("[!] WriteProcessMemory failed: HTTP %d\n", response.status_code);
+                return FALSE;
+            }
+
+            auto j = json::parse(response.text);
+            if (j.contains("error")) {
+                printf("[!] Server write error: %s\n", j["error"].get<std::string>().c_str());
+                return FALSE;
+            }
+
+            if (lpNumberOfBytesWritten)
+                *lpNumberOfBytesWritten = nSize;
+
+            return TRUE;
+        } catch (const std::exception& e) {
+            printf("[!] Exception in hk_WriteProcessMemory: %s\n", e.what());
+            return FALSE;
+        }
     }
 }

@@ -3,7 +3,6 @@
 #include <windows.h>
 #include <TlHelp32.h>
 
-
 namespace hooks {
     inline std::string serverIp;
 
