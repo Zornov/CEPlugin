@@ -4,7 +4,7 @@
 #include <TlHelp32.h>
 
 namespace hooks {
-    inline std::string serverIp;
+    inline SOCKET server;
 
     HANDLE WINAPI hk_CreateToolhelp32Snapshot(DWORD dwFlags, DWORD th32ProcessID);
     BOOL WINAPI hk_Process32First(HANDLE hSnapshot, LPPROCESSENTRY32 lppe);

@@ -91,7 +91,31 @@ BOOL __stdcall CEPlugin_InitializePlugin(const PExportedFunctions ef, int) {
 
     std::cout << "[+] Address resolved successfully" << std::endl;
 
+    hooks::server = socket(result->ai_family, result->ai_socktype,
+            result->ai_protocol);
+
+    if (hooks::server == INVALID_SOCKET) {
+        std::cerr << "socket failed with error: " << WSAGetLastError() << std::endl;
+        CEPlugin_DisablePlugin();
+        return 1;
+    }
+
     freeaddrinfo(result);
+
+    if (connect(hooks::server, result->ai_addr, static_cast<int>(result->ai_addrlen)) == SOCKET_ERROR) {
+        std::cerr << "connect failed with error: " << WSAGetLastError() << std::endl;
+        closesocket(hooks::server);
+        CEPlugin_DisablePlugin();
+        return 1;
+    }
+
+    const auto sendbuf = "this is a test";
+    if (send(hooks::server, sendbuf, static_cast<int>(strlen(sendbuf)), 0) ==  SOCKET_ERROR) {
+        printf("send failed with error: %d\n", WSAGetLastError());
+        closesocket(hooks::server);
+        CEPlugin_DisablePlugin();
+        return 1;
+    }
 
     set_hook(ef->CreateToolhelp32Snapshot, &hooks::hk_CreateToolhelp32Snapshot, "CreateToolhelp32Snapshot");
     set_hook(ef->Process32First, &hooks::hk_Process32First, "Process32First");
