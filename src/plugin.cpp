@@ -1,3 +1,8 @@
+#define WIN32_LEAN_AND_MEAN
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
 #include <windows.h>
 #include <cstdio>
 #include <iostream>
@@ -8,6 +13,8 @@
 extern "C" {
     #include "cepluginsdk.h"
 }
+
+#pragma comment(lib, "Ws2_32.lib")
 
 void SetupConsole() {
     AllocConsole();
@@ -24,7 +31,7 @@ void SetupConsole() {
 template<typename HookT>
 uintptr_t set_hook(void* field_ptr, HookT hook, const char* name = nullptr) noexcept {
     if (!field_ptr) {
-        if (name) std::cerr << "[!] hook: field_ptr == nullptr for " << name << '\n';
+        if (name) std::cerr << "[!] hook: field_ptr == nullptr for " << name << std::endl;
         return 0;
     }
 
@@ -34,9 +41,9 @@ uintptr_t set_hook(void* field_ptr, HookT hook, const char* name = nullptr) noex
     *target = reinterpret_cast<uintptr_t>(hook);
 
     if (name) {
-        std::cout << "[*] Hooked " << name
+        std::cout << "[+] Hooked " << name
                   << " (old: 0x" << std::hex << old
-                  << " new: 0x" << reinterpret_cast<uintptr_t>(hook) << std::dec << ")\n";
+                  << " new: 0x" << reinterpret_cast<uintptr_t>(hook) << std::dec << ")" << std::endl;
     }
 
     return old;
@@ -54,10 +61,37 @@ BOOL __stdcall CEPlugin_InitializePlugin(const PExportedFunctions ef, int) {
     if (!ef) return FALSE;
 
     SetupConsole();
+    std::string serverIp;
+    std::string serverPort;
 
-    std::cout << "[*] Enter server IP with port: ";
-    std::getline(std::cin, hooks::serverIp);
-    std::cout << "[*] Server IP: " << hooks::serverIp << "\n";
+    std::cout << "[*] Enter server IP: ";
+    std::cin >> serverIp;
+    std::cout << "[*] Enter server port: ";
+    std::cin >> serverPort;
+
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        std::cerr << "[!] WSAStartup failed" << std::endl;
+        return FALSE;
+    }
+    std::cout << "[+] WinSock initialized"  << std::endl;
+
+    addrinfo hints{};
+    addrinfo* result = nullptr;
+    ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    if (getaddrinfo(serverIp.c_str(), serverPort.c_str(), &hints, &result) != 0) {
+        std::cerr << "[!] getaddrinfo failed with error: " << WSAGetLastError() << std::endl;
+        CEPlugin_DisablePlugin();
+        return FALSE;
+    }
+
+    std::cout << "[+] Address resolved successfully" << std::endl;
+
+    freeaddrinfo(result);
 
     set_hook(ef->CreateToolhelp32Snapshot, &hooks::hk_CreateToolhelp32Snapshot, "CreateToolhelp32Snapshot");
     set_hook(ef->Process32First, &hooks::hk_Process32First, "Process32First");
@@ -71,6 +105,8 @@ BOOL __stdcall CEPlugin_InitializePlugin(const PExportedFunctions ef, int) {
 }
 
 BOOL __stdcall CEPlugin_DisablePlugin() {
+    std::cout << "[+] Disabling plugin" << std::endl;
+    WSACleanup();
     return TRUE;
 }
 

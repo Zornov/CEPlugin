@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories("ext/CheatEngine")
 include_directories("ext/json")
 
-find_package(cpr CONFIG REQUIRED)
+set(CMAKE_GENERATOR_PLATFORM x64)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(LUA_LIB "${CMAKE_SOURCE_DIR}/ext/CheatEngine/lib/lua53-64.lib")
@@ -32,5 +32,5 @@ set_target_properties(CEPlugin PROPERTIES
 target_link_libraries(CEPlugin
         PRIVATE
         ${LUA_LIB}
-        cpr::cpr
+        Ws2_32
 )

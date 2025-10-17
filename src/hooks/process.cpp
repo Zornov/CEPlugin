@@ -1,5 +1,4 @@
 #include "hooks.h"
-#include <cpr/cpr.h>
 #include <json.hpp>
 #include <mutex>
 #include <vector>
@@ -34,31 +33,31 @@ size_t g_index = 0;
 
 namespace hooks {
     HANDLE WINAPI hk_CreateToolhelp32Snapshot(DWORD, DWORD) {
-        auto async_response = cpr::GetAsync(
-            cpr::Url{"http://" + serverIp + "/processes"},
-            cpr::Timeout{2000}
-        );
-
-        try {
-            cpr::Response r = async_response.get();
-            if (r.text.empty()) {
-                return INVALID_HANDLE_VALUE;
-            }
-            json j = json::parse(r.text);
-
-            std::vector<ProcessData> tmp;
-            for (auto& item : j) {
-                ProcessData p;
-                p.fromJson(item);
-                tmp.push_back(p);
-            }
-
-            std::lock_guard lock(g_mutex);
-            std::swap(g_processes_read, tmp);
-            g_index = 0;
-        } catch (const std::exception& e) {
-            printf("[!] Error fetching processes: %s", e.what());
-        }
+        // auto async_response = cpr::GetAsync(
+        //     cpr::Url{"http://" + serverIp + "/processes"},
+        //     cpr::Timeout{2000}
+        // );
+        //
+        // try {
+        //     cpr::Response r = async_response.get();
+        //     if (r.text.empty()) {
+        //         return INVALID_HANDLE_VALUE;
+        //     }
+        //     json j = json::parse(r.text);
+        //
+        //     std::vector<ProcessData> tmp;
+        //     for (auto& item : j) {
+        //         ProcessData p;
+        //         p.fromJson(item);
+        //         tmp.push_back(p);
+        //     }
+        //
+        //     std::lock_guard lock(g_mutex);
+        //     std::swap(g_processes_read, tmp);
+        //     g_index = 0;
+        // } catch (const std::exception& e) {
+        //     printf("[!] Error fetching processes: %s", e.what());
+        // }
 
         return reinterpret_cast<HANDLE>(0x66);
     }
