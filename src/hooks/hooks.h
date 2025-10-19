@@ -1,10 +1,14 @@
 #pragma once
-#include <string>
+
 #include <windows.h>
+
+#include <memory>
 #include <TlHelp32.h>
+#include <boost/asio/ip/tcp.hpp>
 
 namespace hooks {
-    inline SOCKET server;
+    inline std::unique_ptr<boost::asio::io_context> io_context;
+    inline std::unique_ptr<boost::asio::ip::tcp::socket> server;
 
     HANDLE WINAPI hk_CreateToolhelp32Snapshot(DWORD dwFlags, DWORD th32ProcessID);
     BOOL WINAPI hk_Process32First(HANDLE hSnapshot, LPPROCESSENTRY32 lppe);

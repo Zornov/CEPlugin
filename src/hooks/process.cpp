@@ -1,8 +1,10 @@
+#include <iostream>
 #include "hooks.h"
 #include <json.hpp>
 #include <mutex>
 #include <vector>
 #include <string>
+#include <boost/asio.hpp>
 
 using json = nlohmann::json;
 
@@ -33,36 +35,54 @@ size_t g_index = 0;
 
 namespace hooks {
     HANDLE WINAPI hk_CreateToolhelp32Snapshot(DWORD, DWORD) {
-        // auto async_response = cpr::GetAsync(
-        //     cpr::Url{"http://" + serverIp + "/processes"},
-        //     cpr::Timeout{2000}
-        // );
-        //
-        // try {
-        //     cpr::Response r = async_response.get();
-        //     if (r.text.empty()) {
-        //         return INVALID_HANDLE_VALUE;
-        //     }
-        //     json j = json::parse(r.text);
-        //
-        //     std::vector<ProcessData> tmp;
-        //     for (auto& item : j) {
-        //         ProcessData p;
-        //         p.fromJson(item);
-        //         tmp.push_back(p);
-        //     }
-        //
-        //     std::lock_guard lock(g_mutex);
-        //     std::swap(g_processes_read, tmp);
-        //     g_index = 0;
-        // } catch (const std::exception& e) {
-        //     printf("[!] Error fetching processes: %s", e.what());
-        // }
+        using boost::asio::ip::tcp;
 
+        if (!server || !server->is_open())
+            return reinterpret_cast<HANDLE>(0x66);
+
+        boost::system::error_code ec;
+
+        json req_json = { {"action", "processes"} };
+        std::string req = req_json.dump() + "\n";
+        boost::asio::write(*server, boost::asio::buffer(req), ec);
+        if (ec) {
+            return reinterpret_cast<HANDLE>(0x66);
+        }
+
+        boost::asio::streambuf buf;
+        boost::asio::read_until(*server, buf, "\n", ec);
+        if (ec) {
+            return reinterpret_cast<HANDLE>(0x66);
+        }
+
+        std::istream is(&buf);
+        std::string line;
+        std::getline(is, line);
+
+        if (line.empty())
+            return reinterpret_cast<HANDLE>(0x66);
+
+        try {
+            json j = json::parse(line);
+
+            std::vector<ProcessData> tmp;
+            tmp.reserve(j.size());
+            for (auto& item : j) {
+                ProcessData p;
+                p.fromJson(item);
+                tmp.push_back(std::move(p));
+            }
+
+            std::lock_guard lock(g_mutex);
+            g_processes_read.swap(tmp);
+            g_index = 0;
+        } catch ([[maybe_unused]] const std::exception& e) {
+
+        }
         return reinterpret_cast<HANDLE>(0x66);
     }
 
-    BOOL WINAPI hk_Process32First(HANDLE, LPPROCESSENTRY32 lppe) {
+    BOOL WINAPI hk_Process32First(HANDLE, const LPPROCESSENTRY32 lppe) {
         std::lock_guard lock(g_mutex);
         if (g_processes_read.empty()) return FALSE;
 
@@ -71,7 +91,7 @@ namespace hooks {
         return TRUE;
     }
 
-    BOOL WINAPI hk_Process32Next(HANDLE, LPPROCESSENTRY32 lppe) {
+    BOOL WINAPI hk_Process32Next(HANDLE, const LPPROCESSENTRY32 lppe) {
         std::lock_guard lock(g_mutex);
         if (g_index + 1 >= g_processes_read.size()) return FALSE;
 

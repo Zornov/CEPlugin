@@ -1,8 +1,9 @@
 #include "hooks.h"
 
-// #include <cpr/cpr.h>
 #include <json.hpp>
 #include <string>
+#include "../core/logging/logging.h"
+#include <boost/asio.hpp>
 
 using json = nlohmann::json;
 
@@ -13,12 +14,36 @@ namespace hooks {
         BOOL,
         const DWORD dwProcessId
     ) {
-        // const auto response = cpr::Post(
-        //     cpr::Url{"http://" + serverIp + "/open-process"},
-        //     cpr::Payload{{"pid", std::to_string(dwProcessId)}},
-        //     cpr::Timeout{2000}
-        // );
-        // printf("[*] OpenProcess called: %s", response.text.c_str());
+        using boost::asio::ip::tcp;
+
+        if (!server || !server->is_open())
+            return reinterpret_cast<HANDLE>(0x69);
+
+        boost::system::error_code ec;
+
+        const json req_json = { {"action", "open-process"}, {"pid", std::to_string(dwProcessId)} };
+        std::string req = req_json.dump() + "\n";
+        boost::asio::write(*server, boost::asio::buffer(req), ec);
+        if (ec) {
+            return reinterpret_cast<HANDLE>(0x69);
+        }
+
+        boost::asio::streambuf buf;
+        boost::asio::read_until(*server, buf, "\n", ec);
+        if (ec) {
+            return reinterpret_cast<HANDLE>(0x69);
+        }
+
+        std::istream is(&buf);
+        std::string line;
+        std::getline(is, line);
+
+        log_note("OpenProcess response: " + line);
+
+        if (line.empty()) {
+            return reinterpret_cast<HANDLE>(0x69);
+        }
+
         return reinterpret_cast<HANDLE>(0x69);
     }
 
@@ -77,49 +102,6 @@ namespace hooks {
         const SIZE_T nSize,
         SIZE_T* lpNumberOfBytesWritten
     ) {
-        // try {
-        //     const auto addr = reinterpret_cast<uint64_t>(lpBaseAddress);
-        //     const auto* bytes = static_cast<const unsigned char*>(lpBuffer);
-        //
-        //     std::string hexData;
-        //     hexData.reserve(nSize * 2);
-        //     static auto hex = "0123456789ABCDEF";
-        //     for (size_t i = 0; i < nSize; ++i) {
-        //         hexData.push_back(hex[(bytes[i] >> 4) & 0xF]);
-        //         hexData.push_back(hex[bytes[i] & 0xF]);
-        //     }
-        //
-        //     const json payload = {
-        //         {"address", addr},
-        //         {"data", hexData}
-        //     };
-        //
-        //     auto response = cpr::Post(
-        //         cpr::Url{"http://" + serverIp + "/write-memory"},
-        //         cpr::Body{payload.dump()},
-        //         cpr::Header{{"Content-Type", "application/json"}},
-        //         cpr::Timeout{3000}
-        //     );
-        //
-        //     if (response.status_code != 200) {
-        //         printf("[!] WriteProcessMemory failed: HTTP %d\n", response.status_code);
-        //         return FALSE;
-        //     }
-        //
-        //     auto j = json::parse(response.text);
-        //     if (j.contains("error")) {
-        //         printf("[!] Server write error: %s\n", j["error"].get<std::string>().c_str());
-        //         return FALSE;
-        //     }
-        //
-        //     if (lpNumberOfBytesWritten)
-        //         *lpNumberOfBytesWritten = nSize;
-        //
-        //     return TRUE;
-        // } catch (const std::exception& e) {
-        //     printf("[!] Exception in hk_WriteProcessMemory: %s\n", e.what());
-        //     return FALSE;
-        // }
         return FALSE;
     }
 }
