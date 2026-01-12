@@ -24,10 +24,12 @@ FetchContent_Declare(asio
 )
 FetchContent_MakeAvailable(websocketpp asio)
 
-file(GLOB_RECURSE SOURCES "src/*.cpp")
-file(GLOB_RECURSE HEADERS "src/*.hpp")
+file(GLOB_RECURSE SOURCES
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
+)
 
-add_library(${PROJECT_NAME} SHARED ${SOURCES} ${HEADERS})
+add_library(${PROJECT_NAME} SHARED ${SOURCES} ${HEADERS} CEPlugin.def)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
         src

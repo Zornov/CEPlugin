@@ -8,7 +8,7 @@ static CPluginLauncher g_CPluginLauncher{};
 auto CPluginLauncher::OnInitializePlugin( PExportedFunctions exportedFunctions, int ) const -> void {
     GetLog()->Initialize();
 
-    LOG( "Initializing %s v%d\n", m_PluginName.c_str(), m_Version );
+    LOG( "[info] Initializing %s v%d\n", m_PluginName.c_str(), m_Version );
 
     if ( !GetHooker()->Initialize() ) {
         LOG( "[error] Hooker: Initialize\n" );
@@ -23,8 +23,13 @@ auto CPluginLauncher::OnInitializePlugin( PExportedFunctions exportedFunctions, 
 }
 
 auto CPluginLauncher::OnDisablePlugin() -> void {
-    GetHooker()->Destroy();
-    GetLog()->Destroy();
+    std::call_once(
+        m_bDestroyed,
+        [] {
+            GetLog()->Destroy();
+            GetHooker()->Destroy();
+        }
+    );
 }
 
 auto CPluginLauncher::GetVersion( PPluginVersion pv, int ) const -> void {
