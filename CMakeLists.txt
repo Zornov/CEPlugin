@@ -1,48 +1,54 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 4.2)
 project(CEPlugin)
 
-cmake_policy(SET CMP0167 NEW)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_GENERATOR_PLATFORM x64)
-
-include_directories("ext/CheatEngine")
-include_directories("ext/json")
-
-find_package(Boost REQUIRED)
+set(CMAKE_CXX_STANDARD 26)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(LUA_LIB "${CMAKE_SOURCE_DIR}/ext/CheatEngine/lib/lua53-64.lib")
+    set(ARCH "64")
 else()
-    set(LUA_LIB "${CMAKE_SOURCE_DIR}/ext/CheatEngine/lib/lua53-32.lib")
+    set(ARCH "32")
 endif()
 
-add_library(CEPlugin SHARED
-        src/plugin.cpp
-        src/hooks/process.cpp
-        src/hooks/memory.cpp
-        src/core/logging/logging.h
-        src/core/logging/logging.cpp
-        src/core/console/console.cpp
-        src/core/console/console.h
-        src/core/hooker/hooker.cpp
-        src/core/hooker/hooker.h
+set(CE_DIR "${CMAKE_SOURCE_DIR}/ext/CheatEngine")
+
+include(FetchContent)
+FetchContent_Declare(websocketpp
+        GIT_REPOSITORY https://github.com/zaphoyd/websocketpp
+        GIT_TAG 0.8.2
+        GIT_SHALLOW TRUE
+)
+FetchContent_Declare(asio
+        GIT_REPOSITORY https://github.com/chriskohlhoff/asio
+        GIT_TAG asio-1-36-0
+        GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(websocketpp asio)
+
+file(GLOB_RECURSE SOURCES "src/*.cpp")
+file(GLOB_RECURSE HEADERS "src/*.hpp")
+
+add_library(${PROJECT_NAME} SHARED ${SOURCES} ${HEADERS})
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+        src
+        ${CE_DIR}
+        ${websocketpp_SOURCE_DIR}
+        ${asio_SOURCE_DIR}/asio/include
 )
 
-target_compile_definitions(CEPlugin PRIVATE
-        _WINDLL
-        _USRDLL
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+        ASIO_STANDALONE
+        _WEBSOCKETPP_CPP11_STL_
         WIN32_LEAN_AND_MEAN
         NOMINMAX
 )
 
-set_target_properties(CEPlugin PROPERTIES
-        WINDOWS_EXPORT_ALL_SYMBOLS TRUE
+target_compile_options(${PROJECT_NAME} PRIVATE
+        /W4
+        $<$<CONFIG:Release>:/O2>
 )
 
-target_link_libraries(CEPlugin
-        PRIVATE
-        ${LUA_LIB}
-        Ws2_32
-        Boost::boost
+target_link_libraries(${PROJECT_NAME} PRIVATE
+        ${CE_DIR}/lib/lua53-${ARCH}.lib
+        ws2_32
 )
