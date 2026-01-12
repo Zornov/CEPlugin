@@ -5,7 +5,7 @@
 
 static CPluginLauncher g_CPluginLauncher{};
 
-auto CPluginLauncher::OnInitializePlugin( PExportedFunctions, int ) const -> void {
+auto CPluginLauncher::OnInitializePlugin( PExportedFunctions exportedFunctions, int ) const -> void {
     GetLog()->Initialize();
 
     LOG( "Initializing %s v%d\n", m_PluginName.c_str(), m_Version );
@@ -15,7 +15,7 @@ auto CPluginLauncher::OnInitializePlugin( PExportedFunctions, int ) const -> voi
         return;
     }
 
-    if ( !GetHooker()->InstallSecondHook() ) {
+    if ( !GetHooker()->InstallSecondHook(exportedFunctions) ) {
         LOG( "[error] Hooker: InstallSecondHook\n" );
         return;
     }

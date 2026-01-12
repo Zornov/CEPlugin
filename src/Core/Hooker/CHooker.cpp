@@ -3,6 +3,8 @@
 #include <Common/Log/CLog.hpp>
 #include <iostream>
 
+#include "Methods/CreateToolhelp32Snapshot_Hook.hpp"
+
 static CHooker g_CHooker{};
 
 auto CHooker::Initialize() -> bool {
@@ -15,8 +17,16 @@ auto CHooker::Initialize() -> bool {
     return true;
 }
 
-auto CHooker::InstallSecondHook() -> bool {
+auto CHooker::InstallSecondHook( PExportedFunctions functions ) -> bool {
     m_Hooks = {
+        {
+            "CheatEngine::CreateToolhelp32Snapshot",
+            functions->CreateToolhelp32Snapshot,
+            reinterpret_cast<void*>(Hook_CreateToolhelp32Snapshot),
+            reinterpret_cast<void**>(&CreateToolhelp32Snapshot_o),
+            false,
+            false
+        }
     };
 
     return InstallHooks();

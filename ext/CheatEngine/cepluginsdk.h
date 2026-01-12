@@ -161,7 +161,7 @@ typedef struct _REGISTERMODIFICATIONINFO
 } REGISTERMODIFICATIONINFO, *PREGISTERMODIFICATIONINFO;
 
 //the __stdcall stuff isn't really needed since I've set compiler options to force stdcall, but this makes it clear that stdcall is used to the reader
-typedef void (__stdcall *CEP_SHOWMESSAGE)(const char* message);
+typedef void (__stdcall *CEP_SHOWMESSAGE)(char* message);
 typedef int (__stdcall *CEP_REGISTERFUNCTION) (int pluginid, PluginType functiontype, PVOID init);
 typedef BOOL (__stdcall *CEP_UNREGISTERFUNCTION) (int pluginid, int functionid);
 typedef HANDLE (__stdcall *CEP_GETMAINWINDOWHANDLE) (void);

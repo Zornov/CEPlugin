@@ -2,12 +2,13 @@
 
 #include <vector>
 #include <Windows.h>
+#include <cepluginsdk.h>
 
 struct HookData {
     const char* m_pName = nullptr;
     void* m_pTarget = nullptr;
-    LPVOID m_pDetour = nullptr;
-    LPVOID* m_pOriginal = nullptr;
+    void* m_pDetour = nullptr;
+    void** m_pOriginal = nullptr;
     bool m_bSkipIfNotFound = false;
     bool m_bSkipError = false;
 };
@@ -15,7 +16,7 @@ struct HookData {
 class CHooker final {
 public:
     auto Initialize() -> bool;
-    auto InstallSecondHook() -> bool;
+    auto InstallSecondHook( PExportedFunctions functions ) -> bool;
     auto Destroy() -> void;
 
 
