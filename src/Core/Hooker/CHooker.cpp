@@ -1,8 +1,6 @@
 #include "CHooker.hpp"
 
 #include <Common/Log/CLog.hpp>
-#include <iostream>
-
 #include "Methods/CreateToolhelp32Snapshot_Hook.hpp"
 
 static CHooker g_CHooker{};
@@ -17,11 +15,11 @@ auto CHooker::Initialize() -> bool {
     return true;
 }
 
-auto CHooker::InstallSecondHook( PExportedFunctions functions ) -> bool {
+auto CHooker::InstallSecondHook( const PExportedFunctions functions ) -> bool {
     m_Hooks = {
         {
             "CheatEngine::CreateToolhelp32Snapshot",
-            functions->CreateToolhelp32Snapshot,
+            &functions->CreateToolhelp32Snapshot,
             reinterpret_cast<void*>(Hook_CreateToolhelp32Snapshot),
             reinterpret_cast<void**>(&CreateToolhelp32Snapshot_o),
             false,
@@ -44,7 +42,7 @@ auto CHooker::InstallHooks() -> bool {
             continue;
         }
 
-        const uintptr_t old = SetInternalHook(m_pOriginal, m_pDetour, m_pName);
+        const uintptr_t old = SetInternalHook(m_pTarget, m_pDetour, m_pName);
 
         if ( old == 0 ) {
             if ( !m_bSkipError )
@@ -56,8 +54,11 @@ auto CHooker::InstallHooks() -> bool {
             continue;
         }
 
-        LOG( "[info] Hooked -> '%s' (old: 0x%llX, new: 0x%llX)\n",
-            m_pName ? m_pName : "Unknown", old, reinterpret_cast<uintptr_t>(m_pDetour) );
+        if ( m_pOriginal ) {
+            *m_pOriginal = reinterpret_cast<void*>(old);
+        }
+
+        LOG( "[info] Hooked -> '%s'\n", m_pName ? m_pName : "Unknown" );
     }
 
     m_Hooks.clear();
@@ -74,6 +75,13 @@ auto CHooker::SetInternalHook(void* field_ptr, HookT hook, const char* name) noe
 
     const auto target = static_cast<uintptr_t*>(field_ptr);
     const uintptr_t old = *target;
+
+    if (old == 0) {
+        if (name)
+            LOG("[error] Original function pointer is null for %s\n", name);
+        return 0;
+    }
+
     *target = reinterpret_cast<uintptr_t>(hook);
 
     return old;

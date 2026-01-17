@@ -1,8 +1,11 @@
 #pragma once
 
 #include <vector>
-#include <Windows.h>
-#include <cepluginsdk.h>
+#include <string>
+
+extern "C" {
+    #include "cepluginsdk.h"
+}
 
 struct HookData {
     const char* m_pName = nullptr;
@@ -13,18 +16,17 @@ struct HookData {
     bool m_bSkipError = false;
 };
 
-class CHooker final {
+class CHooker {
 public:
     auto Initialize() -> bool;
     auto InstallSecondHook( PExportedFunctions functions ) -> bool;
     auto Destroy() -> void;
 
-
 private:
     auto InstallHooks() -> bool;
 
     template<typename HookT>
-    static auto SetInternalHook(void* field_ptr, HookT hook, const char* name = nullptr) noexcept -> uintptr_t;
+    static auto SetInternalHook( void* field_ptr, HookT hook, const char* name ) noexcept -> uintptr_t;
 
     bool m_bInitialized = false;
     std::vector<HookData> m_Hooks;
